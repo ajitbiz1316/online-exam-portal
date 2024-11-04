@@ -1,0 +1,48 @@
+name: Push the Docker image to AWS ECR Repo
+
+on:
+  push:
+    branches:
+      - dev
+jobs:
+  Build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get commit hash
+        id: get-commit-hash
+        run: echo "::set-output name=commit-hash::$(git rev-parse --short HEAD)"
+
+      - name: Backend - Build, tag, and push the image to Amazon ECR
+        id: build-image-backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: online-exam-portal
+          IMAGE_TAG: backend-${{ steps.get-commit-hash.outputs.commit-hash }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: frontend - Build, tag, and push the image to Amazon ECR
+        id: build-image-frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: online-exam-portal
+          IMAGE_TAG: frontend-${{ steps.get-commit-hash.outputs.commit-hash }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
