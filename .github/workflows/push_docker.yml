@@ -29,6 +29,7 @@ jobs:
 
       - name: Backend - Build, tag, and push the image to Amazon ECR
         id: build-image-backend
+        working-directory: ./backend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: online-exam-portal
@@ -39,6 +40,7 @@ jobs:
 
       - name: frontend - Build, tag, and push the image to Amazon ECR
         id: build-image-frontend
+        working-directory: ./frontend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: online-exam-portal
