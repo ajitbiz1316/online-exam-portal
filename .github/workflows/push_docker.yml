@@ -1,9 +1,16 @@
 name: Push the Docker image to AWS ECR Repo
 
 on:
-  push:
-    branches:
-      - dev
+  workflow_dispatch:
+    inputs:
+      directory:
+        type: choice
+        description: Which image to build
+        options: 
+        - backend
+        - frontend
+        - user-portal-frontend
+        required: true
 jobs:
   Build:
     name: Build
@@ -25,26 +32,21 @@ jobs:
 
       - name: Get commit hash
         id: get-commit-hash
-        run: echo "::set-output name=commit-hash::$(git rev-parse --short HEAD)"
+        run: |
+          echo "::set-output name=commit-hash::$(git rev-parse HEAD)"
+          echo "::set-output name=prev-commit-hash::$(git rev-parse HEAD~1)"
+      
+      - name: Delete previous image from ECR
+        run: |
+          aws ecr batch-delete-image --repository-name your-ecr-repo-name --image-ids imageTag=${{ env.previous_commit_sha }} || echo "No previous image found."
 
       - name: Backend - Build, tag, and push the image to Amazon ECR
-        id: build-image-backend
-        working-directory: ./backend
+        id: build-image-${{github.event.inputs.directory}}
+        working-directory: ./${{github.event.inputs.directory}}
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: online-exam-portal
-          IMAGE_TAG: backend-${{ steps.get-commit-hash.outputs.commit-hash }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: frontend - Build, tag, and push the image to Amazon ECR
-        id: build-image-frontend
-        working-directory: ./frontend
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: online-exam-portal
-          IMAGE_TAG: frontend-${{ steps.get-commit-hash.outputs.commit-hash }}
+          IMAGE_TAG: ${{github.event.inputs.directory}}-${{ steps.get-commit-hash.outputs.commit-hash }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
